@@ -5,6 +5,14 @@ from scipy.linalg import eig, eigh
 from sklearn.cluster import SpectralClustering
 from sklearn.decomposition import PCA
 import warnings
+
+from torch_geometric.nn import GATConv
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 warnings.filterwarnings('ignore')
 np.random.seed(0)
 
@@ -50,20 +58,42 @@ class GraphUnet(nn.Module):
         return hs
 
 
+# class GCN(nn.Module):
+
+#     def __init__(self, in_dim, out_dim, act, p):
+#         super(GCN, self).__init__()
+#         self.proj = nn.Linear(in_dim, out_dim)
+#         self.act = act
+#         self.drop = nn.Dropout(p=p) if p > 0.0 else nn.Identity()
+
+#     def forward(self, g, h):
+#         h = self.drop(h)
+#         h = torch.matmul(g, h)
+#         h = self.proj(h)
+#         h = self.act(h)
+#         return h
+
 class GCN(nn.Module):
-
-    def __init__(self, in_dim, out_dim, act, p):
+        def __init__(self, in_dim, out_dim, act, p):
         super(GCN, self).__init__()
-        self.proj = nn.Linear(in_dim, out_dim)
         self.act = act
-        self.drop = nn.Dropout(p=p) if p > 0.0 else nn.Identity()
+        self.in_head = 8
+        self.out_head = 1
+        self.conv1 = GATConv(in_dim, out_dim, heads=self.in_head, dropout=p,concat=False)
 
-    def forward(self, g, h):
-        h = self.drop(h)
-        h = torch.matmul(g, h)
-        h = self.proj(h)
-        h = self.act(h)
-        return h
+
+    def forward(self, g,h):
+        print('type h:'+str(type(h)))
+        print('shape h:'+str(h.shape))
+        print('type g:'+str(type(g)))
+        print('shape g:'+str(g.shape))
+        x, edge_index = h, data.edge_index 
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv1(x, edge_index)
+        #x = F.elu(x)
+        x = self.act(x)
+
+        return x
 
 
 class Pool(nn.Module):
