@@ -1,6 +1,5 @@
-import torch
-import torch.nn as nn
 import numpy as np
+import torch
 from scipy.linalg import eig, eigh
 from sklearn.cluster import SpectralClustering
 from sklearn.decomposition import PCA
@@ -8,8 +7,12 @@ import warnings
 
 from torch_geometric.nn import GATConv
 from torch_geometric.nn import SAGEConv
-import numpy as np
-import torch
+from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn import Linear as Linear_pyg
+from torch_geometric.nn import GINConv
+
+
+
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -112,23 +115,60 @@ def to_pyg_edgeindex(g):
 #         x = self.act(x)
 #         return x
 
-#real SAGEConv
+#real GATv2
+# class GCN(nn.Module):
+#     def __init__(self, in_dim, out_dim, act, p):
+#         super(GCN, self).__init__()
+#         self.act = act
+#         self.in_head = 8
+#         self.out_head = 1
+#         self.conv1 = GATv2Conv(in_dim, out_dim, heads=self.in_head, dropout=p,concat=False)
+#
+#     def forward(self, g,h):
+#         x = h
+#         edge_index,edge_attr = to_pyg_edgeindex(g)
+#         x = F.dropout(x, p=0.6, training=self.training)
+#         x = self.conv1(x, edge_index)
+#         #x = F.elu(x)
+#         x = self.act(x)
+#         return x
+
+#GIN
 class GCN(nn.Module):
     """
-    GraphSAGE Conv layer
+    Graph Isomorphism Network (GIN) layer
     """
-    def __init__(self,in_dim,out_dim,act,p):
-        super(GCN, self).__init__()
+    def __init__(self, in_dim, out_dim, act, p):
+        super(GCN,self).__init__()
         self.act = act
-        self.model = SAGEConv(in_dim,out_dim,bias=True)
+        gin_nn = nn.Sequential(Linear_pyg(in_dim, out_dim), nn.ReLU(),Linear_pyg(out_dim, out_dim))
+        self.model = GINConv(gin_nn)
 
     def forward(self,g,h):
         x = h
         edge_index,edge_attr = to_pyg_edgeindex(g)
         x = F.dropout(x, p=0.6, training=self.training)
-        x = self.model(x, edge_index)
+        x = self.model(x,edge_index)
         x = self.act(x)
         return x
+
+#real SAGEConv
+# class GCN(nn.Module):
+#     """
+#     GraphSAGE Conv layer
+#     """
+#     def __init__(self,in_dim,out_dim,act,p):
+#         super(GCN, self).__init__()
+#         self.act = act
+#         self.model = SAGEConv(in_dim,out_dim,bias=True)
+#
+#     def forward(self,g,h):
+#         x = h
+#         edge_index,edge_attr = to_pyg_edgeindex(g)
+#         x = F.dropout(x, p=0.6, training=self.training)
+#         x = self.model(x, edge_index)
+#         x = self.act(x)
+#         return x
 
 class Pool(nn.Module):
 
