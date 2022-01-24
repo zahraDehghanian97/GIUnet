@@ -10,7 +10,8 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import Linear as Linear_pyg
 from torch_geometric.nn import GINConv
-
+from torch_geometric.nn import TransformerConv
+from torch_geometric.nn import SplineConv
 
 
 import torch.nn as nn
@@ -61,6 +62,19 @@ class GraphUnet(nn.Module):
         hs.append(h)
         return hs
 
+def to_pyg_edgeindex(g):
+    src_list = []
+    dst_list = []
+    attr_list = []
+    for i in range(g.shape[0]):
+        for j in range(g.shape[1]):
+            if g[i,j]>0:
+                src_list.append(i)
+                dst_list.append(j)
+                attr_list.append(g[i,j])
+    final_list = [src_list,dst_list]
+    return torch.tensor(final_list),torch.tensor(attr_list)
+
 #real GCN
 # class GCN(nn.Module):
 #
@@ -82,20 +96,6 @@ class GraphUnet(nn.Module):
 #         h = self.proj(h)
 #         h = self.act(h)
 #         return h
-
-def to_pyg_edgeindex(g):
-    src_list = []
-    dst_list = []
-    attr_list = []
-    for i in range(g.shape[0]):
-        for j in range(g.shape[1]):
-            if g[i,j]>0:
-                src_list.append(i)
-                dst_list.append(j)
-                attr_list.append(g[i,j])
-    final_list = [src_list,dst_list]
-    return torch.tensor(final_list),torch.tensor(attr_list)
-
 
 #real GAT
 # class GCN(nn.Module):
@@ -141,13 +141,14 @@ class GCN(nn.Module):
     def __init__(self, in_dim, out_dim, act, p):
         super(GCN,self).__init__()
         self.act = act
+        self.p = p
         gin_nn = nn.Sequential(Linear_pyg(in_dim, out_dim), nn.ReLU(),Linear_pyg(out_dim, out_dim))
         self.model = GINConv(gin_nn)
 
     def forward(self,g,h):
         x = h
         edge_index,edge_attr = to_pyg_edgeindex(g)
-        x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=self.p, training=self.training)
         x = self.model(x,edge_index)
         x = self.act(x)
         return x
@@ -169,6 +170,27 @@ class GCN(nn.Module):
 #         x = self.model(x, edge_index)
 #         x = self.act(x)
 #         return x
+
+
+#TransformerConv
+# class GCN(nn.Module):
+#     """
+#     GraphSAGE Conv layer
+#     """
+#     def __init__(self,in_dim,out_dim,act,p):
+#         super(GCN, self).__init__()
+#         self.act = act
+#         self.model = TransformerConv(in_dim,out_dim,heads = 1,bias=True)
+#
+#     def forward(self,g,h):
+#         x = h
+#         edge_index,edge_attr = to_pyg_edgeindex(g)
+#         x = F.dropout(x, p=0.6, training=self.training)
+#         x = self.model(x, edge_index)
+#         x = self.act(x)
+#         return x
+
+
 
 class Pool(nn.Module):
 
