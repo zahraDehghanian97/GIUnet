@@ -5,6 +5,14 @@ from scipy.linalg import eig, eigh
 from sklearn.cluster import SpectralClustering
 from sklearn.decomposition import PCA
 import warnings
+
+from torch_geometric.nn import GATConv
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 warnings.filterwarnings('ignore')
 np.random.seed(0)
 
@@ -49,21 +57,59 @@ class GraphUnet(nn.Module):
         hs.append(h)
         return hs
 
+#
+# class GCN(nn.Module):
+#
+#     def __init__(self, in_dim, out_dim, act, p):
+#         super(GCN, self).__init__()
+#         self.proj = nn.Linear(in_dim, out_dim)
+#         self.act = act
+#         self.drop = nn.Dropout(p=p) if p > 0.0 else nn.Identity()
+#
+#     def forward(self, g, h):
+#         print('type h:'+str(type(h)))
+#         print('shape h:'+str(h.shape))
+#         print(h)
+#         print('type g:'+str(type(g)))
+#         print('shape g:'+str(g.shape))
+#         print(g)
+#         h = self.drop(h)
+#         h = torch.matmul(g, h)
+#         h = self.proj(h)
+#         h = self.act(h)
+#         return h
+
+def to_pyg_edgeindex(g):
+    src_list = []
+    dst_list = []
+    attr_list = []
+    for i in range(g.shape[0]):
+        for j in range(g.shape[1]):
+            if g[i,j]>0:
+                src_list.append(i)
+                dst_list.append(j)
+                attr_list.append(g[i,j])
+    final_list = [src_list,dst_list]
+    return torch.tensor(final_list)
+
+
 
 class GCN(nn.Module):
-
     def __init__(self, in_dim, out_dim, act, p):
         super(GCN, self).__init__()
-        self.proj = nn.Linear(in_dim, out_dim)
         self.act = act
-        self.drop = nn.Dropout(p=p) if p > 0.0 else nn.Identity()
+        self.in_head = 8
+        self.out_head = 1
+        self.conv1 = GATConv(in_dim, out_dim, heads=self.in_head, dropout=p,concat=False)
 
-    def forward(self, g, h):
-        h = self.drop(h)
-        h = torch.matmul(g, h)
-        h = self.proj(h)
-        h = self.act(h)
-        return h
+    def forward(self, g,h):
+        x = h
+        edge_index = to_pyg_edgeindex(g)
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv1(x, edge_index)
+        #x = F.elu(x)
+        x = self.act(x)
+        return x
 
 
 class Pool(nn.Module):
@@ -79,9 +125,9 @@ class Pool(nn.Module):
         Z = self.drop(h)
         weights = self.proj(Z).squeeze()
         scores = self.sigmoid(weights)
-        return sample_k_graph_local(scores, g, h, self.k)
+        # return sample_k_graph_local(scores, g, h, self.k)
         # return sample_k_graph(scores, g, h, self.k)
-        # return top_k_graph(scores, g, h, self.k)
+        return top_k_graph(scores, g, h, self.k)
 
 class Unpool(nn.Module):
 
@@ -222,8 +268,8 @@ def top_k_graph(scores, g, h, k):
     values = torch.unsqueeze(values, -1)
     new_h = torch.mul(new_h, values)
     #print(new_h.shape)
-    transfomed_h = pca(new_h, 3)
-    plot(transfomed_h)
+    # transfomed_h = pca(new_h, 3)
+    # plot(transfomed_h)
     un_g = g.bool().float()
     un_g = torch.matmul(un_g, un_g).bool().float()
     un_g = un_g[idx, :]
