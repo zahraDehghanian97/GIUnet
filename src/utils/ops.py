@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 import warnings
 
 from torch_geometric.nn import GATConv
+from torch_geometric.nn import SAGEConv
 import numpy as np
 import torch
 import torch.nn as nn
@@ -57,7 +58,7 @@ class GraphUnet(nn.Module):
         hs.append(h)
         return hs
 
-#
+#real GCN
 # class GCN(nn.Module):
 #
 #     def __init__(self, in_dim, out_dim, act, p):
@@ -90,27 +91,44 @@ def to_pyg_edgeindex(g):
                 dst_list.append(j)
                 attr_list.append(g[i,j])
     final_list = [src_list,dst_list]
-    return torch.tensor(final_list)
+    return torch.tensor(final_list),torch.tensor(attr_list)
 
 
+#real GAT
+# class GCN(nn.Module):
+#     def __init__(self, in_dim, out_dim, act, p):
+#         super(GCN, self).__init__()
+#         self.act = act
+#         self.in_head = 8
+#         self.out_head = 1
+#         self.conv1 = GATConv(in_dim, out_dim, heads=self.in_head, dropout=p,concat=False)
+#
+#     def forward(self, g,h):
+#         x = h
+#         edge_index,edge_attr = to_pyg_edgeindex(g)
+#         x = F.dropout(x, p=0.6, training=self.training)
+#     x = self.conv1(x, edge_index)
+#         #x = F.elu(x)
+#         x = self.act(x)
+#         return x
 
+#real SAGEConv
 class GCN(nn.Module):
-    def __init__(self, in_dim, out_dim, act, p):
+    """
+    GraphSAGE Conv layer
+    """
+    def __init__(self,in_dim,out_dim,act,p):
         super(GCN, self).__init__()
         self.act = act
-        self.in_head = 8
-        self.out_head = 1
-        self.conv1 = GATConv(in_dim, out_dim, heads=self.in_head, dropout=p,concat=False)
+        self.model = SAGEConv(in_dim,out_dim,bias=True)
 
-    def forward(self, g,h):
+    def forward(self,g,h):
         x = h
-        edge_index = to_pyg_edgeindex(g)
+        edge_index,edge_attr = to_pyg_edgeindex(g)
         x = F.dropout(x, p=0.6, training=self.training)
-        x = self.conv1(x, edge_index)
-        #x = F.elu(x)
+        x = self.model(x, edge_index)
         x = self.act(x)
         return x
-
 
 class Pool(nn.Module):
 
