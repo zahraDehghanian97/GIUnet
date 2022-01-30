@@ -56,7 +56,7 @@ class GNet(nn.Module):
         return F.log_softmax(h, dim=1)
 
     def metric(self, logits, labels):
-        lambda_ = 0
+        lambda_ = 100
         layer_1_norm = torch.linalg.matrix_norm(self.out_l_1.weight)/ \
                     (self.out_l_1.weight.shape[0]*self.out_l_1.weight.shape[1])
         layer_2_norm = torch.linalg.matrix_norm(self.out_l_2.weight)/ \
