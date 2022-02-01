@@ -168,21 +168,21 @@ class Trainer:
                 test_embeddings = list(map(lambda x: x.tolist(), test_embeddings))
                 test_embeddings = np.array(test_embeddings)
 
-                # Plotting train embeddings in 2 and 3 dimention
-                tsne1 = TSNE(n_components=3, init='random')
-                transformed_3d = tsne1.fit_transform(train_embeddings)
-                tsne2 = TSNE(n_components=2, init='random')
-                transformed_2d = tsne2.fit_transform(train_embeddings)
-                plot_2d(transformed_2d, train_labels, 'for train data of IMDB-M-local')
-                plot_3d(transformed_3d, train_labels, 'for train data of IMDB-M-local')
+                # # Plotting train embeddings in 2 and 3 dimention
+                # tsne1 = TSNE(n_components=3, init='random')
+                # transformed_3d = tsne1.fit_transform(train_embeddings)
+                # tsne2 = TSNE(n_components=2, init='random')
+                # transformed_2d = tsne2.fit_transform(train_embeddings)
+                # plot_2d(transformed_2d, train_labels, 'for train data of IMDB-M-local')
+                # plot_3d(transformed_3d, train_labels, 'for train data of IMDB-M-local')
 
-                # Plotting test embeddings in 2 and 3 dimention
-                tsne1 = TSNE(n_components=3, init='random')
-                transformed_3d = tsne1.fit_transform(test_embeddings)
-                tsne2 = TSNE(n_components=2, init='random')
-                transformed_2d = tsne2.fit_transform(test_embeddings)
-                plot_2d(transformed_2d, test_labels, 'for test data of IMDB-M-local')
-                plot_3d(transformed_3d, test_labels, 'for test data of IMDB-M-local')
+                # # Plotting test embeddings in 2 and 3 dimention
+                # tsne1 = TSNE(n_components=3, init='random')
+                # transformed_3d = tsne1.fit_transform(test_embeddings)
+                # tsne2 = TSNE(n_components=2, init='random')
+                # transformed_2d = tsne2.fit_transform(test_embeddings)
+                # plot_2d(transformed_2d, test_labels, 'for test data of IMDB-M-local')
+                # plot_3d(transformed_3d, test_labels, 'for test data of IMDB-M-local')
 
                 accuracy = svm(train_embeddings, train_labels, test_embeddings, test_labels)
                 print('SVM accuracy', accuracy)
