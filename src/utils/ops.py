@@ -197,7 +197,6 @@ class GCN(nn.Module):
 #         return x
 
 
-
 class Pool(nn.Module):
 
     def __init__(self, k, in_dim, p):
@@ -226,12 +225,12 @@ class Pool(nn.Module):
         weights = feature_weights
         scores = self.sigmoid(weights)
 
-
         # return sample_k_graph_local(scores, g, h, self.k)
-        return sample_k_graph(scores, g, h, self.k)
+        # return sample_k_graph(scores, g, h, self.k)
         # return top_k_graph(scorscoreses, g, h, self.k)
         # return sample_k_graph_fast_local(scores, g, h, self.k)
         # return sample_k_graph_kmeanspp(scores, g, h, self.k)
+        return sample_k_graph_kmeanspp_spectral(scores, g, h, self.k)
 
 
 class Unpool(nn.Module):
@@ -242,6 +241,21 @@ class Unpool(nn.Module):
     def forward(self, g, h, pre_h, idx):
         new_h = h.new_zeros([g.shape[0], h.shape[1]])
         new_h[idx] = h
+        #idx_prime = torch.tensor(set(range(g.shape[0])) - set(list(idx)))
+        a = list(idx)
+        b = list(range(g.shape[0]))
+        new_list = [fruit for fruit in a if fruit not in b]
+        idx_prime = torch.tensor(new_list)
+
+        for i in idx_prime:
+            tmp1 = np.zeros(h.shape[1])
+            tmp2 = 0
+            for j in range(g.shape[0]):
+                if g[i, j] > 0:
+                    tmp1 += h[j] * g[i, j]
+                    tmp2 += g[i, j]
+            new_h[i] = tmp1 / tmp2
+
         # new_h = pre_h
         return g, new_h
 
@@ -283,7 +297,7 @@ def all_centralities(graph):
 
 
 def approximate_matrix(a, k):
-    _, v = scipy.linalg.eigh(a, subset_by_index=[0, k-1])
+    _, v = scipy.linalg.eigh(a, subset_by_index=[0, k - 1])
     b = np.absolute(v)
     return torch.tensor(b)
 
@@ -307,6 +321,7 @@ def greedy_selection_of_samples_gpu(gl: torch.Tensor, num_of_samples: int):
     sample_set = []
     kth_power = 8
 
+    # print('tetetet', gl.shape[0])
     Sc = set([i for i in range(gl.shape[0])])
     L_K = torch.matrix_power(gl, kth_power)
     L_K = 0.5 * (L_K + L_K.T)
@@ -319,9 +334,6 @@ def greedy_selection_of_samples_gpu(gl: torch.Tensor, num_of_samples: int):
         reduced_L = reduced_L[:, rc]
         # print('jajajaja', reduced_L)
 
-        # u, s, _ = svd(reduced_L)
-        # min_eig_index = np.argmin(s)
-        # phi = np.absolute(u[min_eig_index])
         eigenvalues, eigenvectors = eigh(reduced_L)
         phi = np.absolute(eigenvectors[0])
         max_index = np.argmax(phi)
@@ -476,6 +488,7 @@ from sklearn.datasets import load_digits
 from sklearn.cluster import KMeans
 from scipy.linalg import fractional_matrix_power
 from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
 
 
 def kernel(xi, uj):
@@ -493,7 +506,7 @@ def compute_p_nearest(xi, p, anchors):
     for anchor in anchors:
         ans.append(counter)
         counter = counter + 1
-        print('anchore: ',anchor)
+        print('anchore: ', anchor)
         sub = np.subtract(xi, anchor)
         distances.append(sub.T @ sub)
     ind = np.argsort(distances)
@@ -611,20 +624,24 @@ def sample_k_graph_fast_local(scores, g, h, k):
 def sample_k_graph_kmeanspp(scores, g, h, k):
     # print('g, h =', g.shape, h.shape)
     num_nodes = g.shape[0]
-    kmeans = KMeans(n_clusters=max(2, int(k * num_nodes)), init='k-means++')
-    kmeans.fit(h.detach().numpy())
+    kmeans = KMeans(n_clusters=max(2, int(k * num_nodes)), init='k-means++', max_iter=10)
+    pca = PCA(n_components=3)
+    pca.fit(h.detach().numpy())
+    _h = pca.transform(h.detach().numpy())
+    kmeans.fit(_h)
+    _h = torch.tensor(_h)
     # print("Kmeans++ done")
     centers, label = kmeans.cluster_centers_, kmeans.labels_
     distances = np.zeros(h.shape[0])
     minpool_centers = []
     maxpool_centers = []
     for j in range(centers.shape[0]):
-        for i in range(h.shape[0]):
-            distances[i] = torch.linalg.norm(h[i]-torch.tensor(centers[j]))
+        for i in range(_h.shape[0]):
+            distances[i] = torch.linalg.norm(_h[i] - torch.tensor(centers[j]))
         minpool_centers.append(np.argmin(distances))
         maxpool_centers.append(np.argmax(distances))
     # print('idx_centers = ', minpool_centers)
-    new_h = h[minpool_centers,:]
+    new_h = h[minpool_centers, :]
     idx = minpool_centers
     un_g = g.bool().float()
     un_g = torch.matmul(un_g, un_g).bool().float()
@@ -632,3 +649,42 @@ def sample_k_graph_kmeanspp(scores, g, h, k):
     un_g = un_g[:, idx]
     g = norm_g(un_g)
     return g, new_h, torch.tensor(minpool_centers)
+
+
+def sample_k_graph_kmeanspp_spectral(scores, g, h, k):
+    num_nodes = g.shape[0]
+    new_num_nodes = max(2, int(k * num_nodes))
+    kmeans = KMeans(n_clusters=max(2, int(k * num_nodes)), init='k-means++', max_iter=20)
+    kmeans.fit(h.detach().numpy())
+    # print("Kmeans++ done")
+    labels = kmeans.labels_
+    idx = []
+    for i in range(new_num_nodes):
+        # Finding nodes of Cluster (i+1)
+        cluster_list = []
+        for j in range(num_nodes):
+            if labels[j] == i:
+                cluster_list.append(j)
+        if cluster_list == []:
+            continue
+
+        _h = h[cluster_list, :]
+        _g = g[cluster_list, :]
+        _g = _g[:, cluster_list]
+        # Selection of One Node From Cluster
+
+        # 2. Compute Laplacian
+        _g = _g.bool().float()
+        L = torch.matrix_power(normalized_laplacian(_g), 3)
+        # 3. Sample
+        selected_node_index = greedy_selection_of_samples_gpu(L, 1).cpu().numpy()[0]
+        selected_node = cluster_list[selected_node_index]
+        idx.append(selected_node)
+        # print('salam',idx)
+    new_h = h[idx, :]
+    un_g = g.bool().float()
+    un_g = torch.matmul(un_g, un_g).bool().float()
+    un_g = un_g[idx, :]
+    un_g = un_g[:, idx]
+    g = norm_g(un_g)
+    return g, new_h, torch.tensor(idx)

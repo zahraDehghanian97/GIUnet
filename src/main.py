@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('-seed', type=int, default=1, help='seed')
     parser.add_argument('-data', default='MUTAG', help='data folder name')
     parser.add_argument('-fold', type=int, default=1, help='fold (1..10)')
-    parser.add_argument('-num_epochs', type=int, default=200, help='epochs')
+    parser.add_argument('-num_epochs', type=int, default=100, help='epochs')
     parser.add_argument('-batch', type=int, default=8, help='batch size')
     parser.add_argument('-lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('-deg_as_tag', type=int, default=0, help='1 or degree')
@@ -137,6 +137,7 @@ def app_run(args, G_data, fold_idx):
         _, _ = net(gs, hs, ys)
         train_embeddings += net.embedding
         train_labels += ys
+        # train_embeddings += net.embedding
     train_labels = list(map(lambda x: x.tolist(), train_labels))
     train_embeddings = list(map(lambda x: x.tolist(), train_embeddings))
     train_embeddings = np.array(train_embeddings)
@@ -145,8 +146,13 @@ def app_run(args, G_data, fold_idx):
         cur_len, gs, hs, ys = batch
         gs, hs, ys = map(trainer.to_cuda, [gs, hs, ys])
         _, _ = net(gs, hs, ys)
+        #test_embeddings += net.embedding
         test_embeddings += net.embedding
         test_labels += ys
+    #print(len(test_embeddings))
+    #print(test_embeddings[0].detach().numpy().shape)
+    #print(net.embedding_best_test)
+    #test_embeddings = net.embedding_best_test
     test_labels = list(map(lambda x: x.tolist(), test_labels))
     test_embeddings = list(map(lambda x: x.tolist(), test_embeddings))
     test_embeddings = np.array(test_embeddings)
