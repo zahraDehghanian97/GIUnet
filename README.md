@@ -1,26 +1,26 @@
-PyTorch Implementation of Graph U-Nets
+PyTorch Implementation of GIUNets
 ======================================
 
-Created by [Hongyang Gao](https://faculty.sites.iastate.edu/hygao/) @ Iowa State University, and
-[Shuiwang Ji](http://people.tamu.edu/~sji/) @ Texas A&M University.
+Created by [Zahra Dehghanian](https://faculty.sites.iastate.edu/hygao/) @ Iowa State University,[Saeed Saravani](https://faculty.sites.iastate.edu/hygao/) @ Iowa State University, and
+[Alireza Amouzad](http://people.tamu.edu/~sji/) @ Amirkabir University of Technology.
 
 About
 -----
 
-PyTorch implementation of Graph U-Nets. Check http://proceedings.mlr.press/v97/gao19a/gao19a.pdf for more information.
+PyTorch implementation of GIUNets. Check http://proceedings.mlr.press/v97/gao19a/gao19a.pdf for more information.
 
 Methods
 -------
 
-### Graph Pooling Layer
+### pqPooling : Pooling Layer
 
 ![gPool](./doc/GPool.png)
 
-### Graph Unpooling Layer
+### pastUnpool : Unpooling Layer
 
 ![gPool](./doc/GUnpool.png)
 
-### Graph U-Net
+### GIUNet Structure
 
 ![gPool](./doc/GUnet.png)
 
@@ -43,7 +43,7 @@ validation on GPU #0.
 Code
 ----
 
-The detail implementation of Graph U-Net is in src/utils/ops.py.
+The detail implementation of GIUNet is in src/utils/ops.py.
 
 
 Datasets
